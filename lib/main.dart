@@ -1,137 +1,114 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:sensors_plus/sensors_plus.dart';
-import 'package:clipboard/clipboard.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:posture_detection_and_correction/view_models/sensor_cubit.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Sensor Data App',
-      home: SensorDataPage(),
+      home: BlocProvider<SensorCubit>(
+        create: (_) => SensorCubit(),
+        child: const SensorDataPage(),
+      ),
     );
   }
 }
 
-class SensorDataPage extends StatefulWidget {
-  @override
-  _SensorDataPageState createState() => _SensorDataPageState();
-}
-
-class _SensorDataPageState extends State<SensorDataPage> {
-  List<GyroscopeEvent> _gyroscopeData = [];
-  List<AccelerometerEvent> _accelerometerData = [];
-  late StreamSubscription<GyroscopeEvent> _gyroscopeSubscription;
-  late StreamSubscription<AccelerometerEvent> _accelerometerSubscription;
-  bool _collectingData = true;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _startSensorStreams();
-    _timer = Timer(const Duration(seconds: 10), () {
-      _stopCollectingData();
-    });
-  }
-
-  void _startSensorStreams() {
-    _gyroscopeSubscription =
-        SensorsPlatform.instance.gyroscopeEventStream().listen((gyroEvent) {
-      if (_collectingData) {
-        setState(() {
-          _gyroscopeData.add(gyroEvent);
-        });
-      }
-    });
-
-    _accelerometerSubscription = SensorsPlatform.instance
-        .accelerometerEventStream()
-        .listen((accelEvent) {
-      if (_collectingData) {
-        setState(() {
-          _accelerometerData.add(accelEvent);
-        });
-      }
-    });
-  }
-
-  void _stopCollectingData() {
-    if (_collectingData) {
-      _gyroscopeSubscription.cancel();
-      _accelerometerSubscription.cancel();
-      _collectingData = false;
-      setState(() {});
-    }
-  }
-
-  @override
-  void dispose() {
-    _gyroscopeSubscription.cancel();
-    _accelerometerSubscription.cancel();
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _copyGyroDataToClipboard() {
-    final StringBuffer sb = StringBuffer();
-    for (var event in _gyroscopeData) {
-      sb.writeln('X: ${event.x}, Y: ${event.y}, Z: ${event.z}');
-    }
-    FlutterClipboard.copy(sb.toString()).then((value) =>
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gyro data copied to clipboard!'))));
-  }
-
-  void _copyAccelDataToClipboard() {
-    final StringBuffer sb = StringBuffer();
-    for (var event in _accelerometerData) {
-      sb.writeln('X: ${event.x}, Y: ${event.y}, Z: ${event.z}');
-    }
-    FlutterClipboard.copy(sb.toString()).then((value) =>
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Accel data copied to clipboard!'))));
-  }
+class SensorDataPage extends StatelessWidget {
+  const SensorDataPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sensor Data'),
+        toolbarHeight: 100.0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.copy_all),
-            onPressed: _copyGyroDataToClipboard,
+          Column(
+            children: [
+              TextButton(
+                child: const Text('Copy Gyroscope Data'),
+                onPressed: () {
+                  final state = context.read<SensorCubit>().state;
+                  if (state is SensorDataLoaded) {
+                    final StringBuffer sb = StringBuffer();
+                    for (var event in state.gyroscopeData) {
+                      sb.writeln('X: ${event.x}, Y: ${event.y}, Z: ${event.z}');
+                    }
+                    Clipboard.setData(ClipboardData(text: sb.toString()))
+                        .then((_) => ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Gyroscope data copied to clipboard!'))))
+                        .catchError((e) => ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(
+                                content: Text(
+                                    'Failed to copy gyroscope data: $e'))));
+                  }
+                },
+              ),
+              TextButton(
+                child: const Text('Copy Accelerometer Data'),
+                onPressed: () {
+                  final state = context.read<SensorCubit>().state;
+                  if (state is SensorDataLoaded) {
+                    final StringBuffer sb = StringBuffer();
+                    for (var event in state.accelerometerData) {
+                      sb.writeln('X: ${event.x}, Y: ${event.y}, Z: ${event.z}');
+                    }
+                    Clipboard.setData(ClipboardData(text: sb.toString()))
+                        .then((_) => ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Accelerometer data copied to clipboard!'))))
+                        .catchError((e) => ScaffoldMessenger.of(context)
+                            .showSnackBar(SnackBar(
+                                content: Text(
+                                    'Failed to copy accelerometer data: $e'))));
+                  }
+                },
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.copy),
-            onPressed: _copyAccelDataToClipboard,
-          )
         ],
       ),
-      body: ListView(
-        children: [
-          ExpansionTile(
-            title: const Text('Gyroscope Data'),
-            children: _gyroscopeData
-                .map((data) => ListTile(
-                      title: Text('X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
-                    ))
-                .toList(),
-          ),
-          ExpansionTile(
-            title: const Text('Accelerometer Data'),
-            children: _accelerometerData
-                .map((data) => ListTile(
-                      title: Text('X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
-                    ))
-                .toList(),
-          ),
-        ],
+      body: BlocBuilder<SensorCubit, SensorState>(
+        builder: (context, state) {
+          if (state is SensorDataLoaded) {
+            return ListView(
+              children: [
+                ExpansionTile(
+                  title: const Text('Gyroscope Data'),
+                  children: state.gyroscopeData
+                      .map((data) => ListTile(
+                            title: Text(
+                                'X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
+                          ))
+                      .toList(),
+                ),
+                ExpansionTile(
+                  title: const Text('Accelerometer Data'),
+                  children: state.accelerometerData
+                      .map((data) => ListTile(
+                            title: Text(
+                                'X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
+                          ))
+                      .toList(),
+                ),
+              ],
+            );
+          } else {
+            return Container();
+          }
+        },
       ),
     );
   }
