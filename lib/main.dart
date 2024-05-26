@@ -34,14 +34,14 @@ class _SensorDataPageState extends State<SensorDataPage> {
   void initState() {
     super.initState();
     _startSensorStreams();
-    _timer = Timer(Duration(seconds: 10), () {
+    _timer = Timer(const Duration(seconds: 10), () {
       _stopCollectingData();
     });
   }
 
   void _startSensorStreams() {
     _gyroscopeSubscription =
-        SensorsPlatform.instance.gyroscopeEvents.listen((gyroEvent) {
+        SensorsPlatform.instance.gyroscopeEventStream().listen((gyroEvent) {
       if (_collectingData) {
         setState(() {
           _gyroscopeData.add(gyroEvent);
@@ -49,8 +49,9 @@ class _SensorDataPageState extends State<SensorDataPage> {
       }
     });
 
-    _accelerometerSubscription =
-        SensorsPlatform.instance.accelerometerEvents.listen((accelEvent) {
+    _accelerometerSubscription = SensorsPlatform.instance
+        .accelerometerEventStream()
+        .listen((accelEvent) {
       if (_collectingData) {
         setState(() {
           _accelerometerData.add(accelEvent);
@@ -83,7 +84,7 @@ class _SensorDataPageState extends State<SensorDataPage> {
     }
     FlutterClipboard.copy(sb.toString()).then((value) =>
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gyro data copied to clipboard!'))));
+            const SnackBar(content: Text('Gyro data copied to clipboard!'))));
   }
 
   void _copyAccelDataToClipboard() {
@@ -93,21 +94,21 @@ class _SensorDataPageState extends State<SensorDataPage> {
     }
     FlutterClipboard.copy(sb.toString()).then((value) =>
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Accel data copied to clipboard!'))));
+            const SnackBar(content: Text('Accel data copied to clipboard!'))));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Sensor Data'),
+        title: const Text('Sensor Data'),
         actions: [
           IconButton(
-            icon: Icon(Icons.copy_all),
+            icon: const Icon(Icons.copy_all),
             onPressed: _copyGyroDataToClipboard,
           ),
           IconButton(
-            icon: Icon(Icons.copy),
+            icon: const Icon(Icons.copy),
             onPressed: _copyAccelDataToClipboard,
           )
         ],
@@ -115,7 +116,7 @@ class _SensorDataPageState extends State<SensorDataPage> {
       body: ListView(
         children: [
           ExpansionTile(
-            title: Text('Gyroscope Data'),
+            title: const Text('Gyroscope Data'),
             children: _gyroscopeData
                 .map((data) => ListTile(
                       title: Text('X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
@@ -123,7 +124,7 @@ class _SensorDataPageState extends State<SensorDataPage> {
                 .toList(),
           ),
           ExpansionTile(
-            title: Text('Accelerometer Data'),
+            title: const Text('Accelerometer Data'),
             children: _accelerometerData
                 .map((data) => ListTile(
                       title: Text('X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
