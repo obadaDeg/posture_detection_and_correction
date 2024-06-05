@@ -22,8 +22,37 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class SensorDataPage extends StatelessWidget {
+class SensorDataPage extends StatefulWidget {
   const SensorDataPage({super.key});
+
+  @override
+  _SensorDataPageState createState() => _SensorDataPageState();
+}
+
+class _SensorDataPageState extends State<SensorDataPage> {
+  bool _dialogShown = false;
+
+  void _showPositionDialog() {
+    if (!_dialogShown) {
+      _dialogShown = true;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Incorrect Position'),
+          content: const Text('Your phone position is not correct.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _dialogShown = false;
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,28 +109,51 @@ class SensorDataPage extends StatelessWidget {
           ),
         ],
       ),
-      body: BlocBuilder<SensorCubit, SensorState>(
+      body: BlocConsumer<SensorCubit, SensorState>(
+        listener: (context, state) {
+          if (state is MaxReadingEvaluated) {
+            if (!state.isPositionCorrect) {
+              _showPositionDialog();
+            }
+          }
+        },
         builder: (context, state) {
           if (state is SensorDataLoaded) {
-            return ListView(
+            return Column(
               children: [
-                ExpansionTile(
-                  title: const Text('Gyroscope Data'),
-                  children: state.gyroscopeData
-                      .map((data) => ListTile(
-                            title: Text(
-                                'X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
-                          ))
-                      .toList(),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                      'Next read in: ${state.remainingNextReadTime} seconds'),
                 ),
-                ExpansionTile(
-                  title: const Text('Accelerometer Data'),
-                  children: state.accelerometerData
-                      .map((data) => ListTile(
-                            title: Text(
-                                'X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
-                          ))
-                      .toList(),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                      'Reading in progress: ${state.remainingReadingTime} seconds'),
+                ),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      ExpansionTile(
+                        title: const Text('Gyroscope Data'),
+                        children: state.gyroscopeData
+                            .map((data) => ListTile(
+                                  title: Text(
+                                      'X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
+                                ))
+                            .toList(),
+                      ),
+                      ExpansionTile(
+                        title: const Text('Accelerometer Data'),
+                        children: state.accelerometerData
+                            .map((data) => ListTile(
+                                  title: Text(
+                                      'X: ${data.x}, Y: ${data.y}, Z: ${data.z}'),
+                                ))
+                            .toList(),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             );
